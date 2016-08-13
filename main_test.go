@@ -23,9 +23,9 @@ func TestHomeHandler(t *testing.T) {
 
 	assert.Equal(t, 200, res.Code)
 	expected := map[string]string{"message": "Hello"}
-	var val map[string]string
-	json.NewDecoder(res.Body).Decode(&val)
-	assert.Equal(t, expected, val)
+	var actual map[string]string
+	json.NewDecoder(res.Body).Decode(&actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestNotesHandler(t *testing.T) {
@@ -35,7 +35,7 @@ func TestNotesHandler(t *testing.T) {
 	res := httptest.NewRecorder()
 	notesHandle.ServeHTTP(res, req)
 	var expected NotesResource
-	var val NotesResource
-	json.NewDecoder(res.Body).Decode(&val)
-	assert.Equal(t, expected, val)
+	var actual NotesResource
+	json.NewDecoder(res.Body).Decode(&actual)
+	assert.Equal(t, expected, actual)
 }
