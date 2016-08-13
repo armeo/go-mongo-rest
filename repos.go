@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // MongoManager ...
@@ -14,6 +16,7 @@ type MongoManager struct {
 // DbManager ...
 type DbManager interface {
 	GetAll() []Note
+	Create(note Note) Note
 }
 
 // NewMongoManager ...
@@ -42,4 +45,24 @@ func (db *MongoManager) GetAll() []Note {
 	}
 
 	return notes
+}
+
+// Create ...
+func (db *MongoManager) Create(note Note) Note {
+	session := db.session.Clone()
+	defer session.Close()
+	collection := session.DB("notesdb").C("notes")
+
+	objID := bson.NewObjectId()
+	note.ID = objID
+	note.CreatedOn = time.Now()
+
+	err := collection.Insert(&note)
+	if err != nil {
+		panic(err)
+	} else {
+		log.Printf("Inserted new Note %s with name %s", note.ID, note.Title)
+	}
+
+	return note
 }
