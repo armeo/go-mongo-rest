@@ -25,14 +25,15 @@ func NewMongoManager(dbPath string) *MongoManager {
 	}
 	session.SetMode(mgo.Monotonic, true)
 
-	return &MongoManager{session}
+	return &MongoManager{session: session}
 }
 
 // GetAll ...
 func (db *MongoManager) GetAll() []Note {
 	var notes []Note
-	defer db.session.Close()
-	collection := db.session.DB("notesdb").C("notes")
+	session := db.session.Clone()
+	defer session.Close()
+	collection := session.DB("notesdb").C("notes")
 	iter := collection.Find(nil).Iter()
 
 	result := Note{}

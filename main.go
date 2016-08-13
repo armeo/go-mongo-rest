@@ -8,32 +8,30 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func JSONHandle(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		f(w, r)
+	}
+}
+
 // HomeHandler ...
 func HomeHandler(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
-	msg, _ := json.Marshal(map[string]string{"message": "Hello"})
-
-	res.Write(msg)
+	json.NewEncoder(res).Encode(map[string]string{"message": "Hello"})
 }
 
 // NotesHandler ...
-func NotesHandler(db DbManager) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "application/json")
-
-		j, err := json.Marshal(NotesResource{Notes: db.GetAll()})
-		if err != nil {
-			panic(err)
-		}
-		res.Write(j)
-	})
+func NotesHandler(db DbManager) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		json.NewEncoder(res).Encode(NotesResource{Notes: db.GetAll()})
+	}
 }
 
 func main() {
 	db := NewMongoManager("localhost")
 	r := mux.NewRouter()
-	r.HandleFunc("/", HomeHandler).Methods("GET")
-	r.Handle("/api/v1/notes", NotesHandler(db)).Methods("GET")
+	r.HandleFunc("/", JSONHandle(HomeHandler)).Methods("GET")
+	r.Handle("/api/v1/notes", JSONHandle(NotesHandler(db))).Methods("GET")
 	http.Handle("/", r)
 
 	log.Println("Listening on 8000")

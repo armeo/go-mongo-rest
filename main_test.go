@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,9 +21,11 @@ func TestHomeHandler(t *testing.T) {
 
 	HomeHandler(res, req)
 
-	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 	assert.Equal(t, 200, res.Code)
-	assert.Equal(t, `{"message":"Hello"}`, res.Body.String())
+	expected := map[string]string{"message": "Hello"}
+	var val map[string]string
+	json.NewDecoder(res.Body).Decode(&val)
+	assert.Equal(t, expected, val)
 }
 
 func TestNotesHandler(t *testing.T) {
@@ -31,6 +34,8 @@ func TestNotesHandler(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/notes", nil)
 	res := httptest.NewRecorder()
 	notesHandle.ServeHTTP(res, req)
-
-	assert.Equal(t, 200, res.Code)
+	var expected NotesResource
+	var val NotesResource
+	json.NewDecoder(res.Body).Decode(&val)
+	assert.Equal(t, expected, val)
 }
