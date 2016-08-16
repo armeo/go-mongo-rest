@@ -81,15 +81,18 @@ func CreateNoteHandle(db DbManager) http.HandlerFunc {
 	}
 }
 
-func main() {
-	db := NewMongoManager("localhost")
+func Route(db DbManager) http.Handler {
+	m := http.NewServeMux()
 	r := mux.NewRouter()
 	r.HandleFunc("/", JSONHandle(HomeHandle)).Methods("GET")
 	r.Handle("/api/v1/notes", JSONHandle(NotesHandle(db))).Methods("GET")
 	r.Handle("/api/v1/notes/{code}", JSONHandle(NoteByCodeHandle(db))).Methods("GET")
 	r.Handle("/api/v1/notes", JSONHandle(CreateNoteHandle(db))).Methods("POST")
-	http.Handle("/", r)
+	m.Handle("/", r)
+	return m
+}
 
+func main() {
 	log.Println("Listening on 8000")
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":8000", Route(NewMongoManager("localhost")))
 }

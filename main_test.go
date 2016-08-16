@@ -3,29 +3,35 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	mgo "gopkg.in/mgo.v2"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type MockDb struct{}
-
-func (db MockDb) GetAll() ([]Note, error) {
-	return nil, nil
+type MockDb struct {
+	err   error
+	note  *Note
+	notes []Note
 }
 
-func (db MockDb) Create(note *Note) (*Note, error) {
-	n := Note{Title: "test", Description: "test"}
-
-	return &n, nil
+func (db *MockDb) GetAll() ([]Note, error) {
+	return db.notes, db.err
 }
 
-func (db MockDb) GetByCode(code string) (*Note, error) {
-	n := Note{Title: "test", Description: "test"}
+func (db *MockDb) Create(note *Note) (*Note, error) {
+	db.note = &Note{Title: "test", Description: "test"}
 
-	return &n, nil
+	return db.note, db.err
+}
+
+func (db *MockDb) GetByCode(code string) (*Note, error) {
+	return db.note, db.err
 }
 
 func TestHomeHandle(t *testing.T) {
@@ -45,7 +51,7 @@ func TestHomeHandle(t *testing.T) {
 
 func TestNotesHandle(t *testing.T) {
 	mockDb := MockDb{}
-	notesHandle := NotesHandle(mockDb)
+	notesHandle := NotesHandle(&mockDb)
 	req, _ := http.NewRequest("GET", "/api/v1/notes", nil)
 	res := httptest.NewRecorder()
 	notesHandle.ServeHTTP(res, req)
@@ -59,7 +65,7 @@ func TestNotesHandle(t *testing.T) {
 
 func TestCreateNoteHandle(t *testing.T) {
 	mockDb := MockDb{}
-	createNoteHandle := CreateNoteHandle(mockDb)
+	createNoteHandle := CreateNoteHandle(&mockDb)
 	var jsonStr = []byte(`{"note":{"title":"test", "description":"test"}}`)
 	req, _ := http.NewRequest("POST", "/api/v1/notes", bytes.NewBuffer(jsonStr))
 	res := httptest.NewRecorder()
@@ -76,15 +82,55 @@ func TestCreateNoteHandle(t *testing.T) {
 }
 
 func TestNoteByCodeHandle(t *testing.T) {
-	mockDb := MockDb{}
-	noteByCodeHandle := NoteByCodeHandle(mockDb)
+	now := time.Now()
+	mockDb := MockDb{
+		note: &Note{Title: "test", Description: "test", CreatedOn: now},
+	}
+
+	mux := Route(&mockDb)
+
 	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
 	res := httptest.NewRecorder()
-	noteByCodeHandle.ServeHTTP(res, req)
+	mux.ServeHTTP(res, req)
 
-	var expected NotesResource
-	var actual NotesResource
+	expected := NoteResource{Note: Note{Title: "test", Description: "test", CreatedOn: now}}
+	var actual NoteResource
 	json.NewDecoder(res.Body).Decode(&actual)
+	assert.Equal(t, expected, actual)
+}
 
+func TestNoteByCodeHandleNotFound(t *testing.T) {
+	mockDb := MockDb{
+		err: mgo.ErrNotFound,
+	}
+
+	mux := Route(&mockDb)
+
+	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	assert.Equal(t, res.Code, http.StatusNotFound)
+	expected := map[string]interface{}{"error_code": float64(http.StatusNotFound), "error_msg": "not found"}
+	var actual map[string]interface{}
+	json.NewDecoder(res.Body).Decode(&actual)
+	assert.Equal(t, expected, actual)
+}
+
+func TestNoteByCodeHandleInternalServerError(t *testing.T) {
+	mockDb := MockDb{
+		err: fmt.Errorf("Internal Server Error"),
+	}
+
+	mux := Route(&mockDb)
+
+	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	assert.Equal(t, res.Code, http.StatusInternalServerError)
+	expected := map[string]interface{}{"error_code": float64(http.StatusInternalServerError), "error_msg": "Internal Server Error"}
+	var actual map[string]interface{}
+	json.NewDecoder(res.Body).Decode(&actual)
 	assert.Equal(t, expected, actual)
 }
