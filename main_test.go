@@ -12,20 +12,20 @@ import (
 
 type MockDb struct{}
 
-func (db MockDb) GetAll() []Note {
-	return nil
+func (db MockDb) GetAll() ([]Note, error) {
+	return nil, nil
 }
 
-func (db MockDb) Create(note Note) Note {
+func (db MockDb) Create(note *Note) (*Note, error) {
 	n := Note{Title: "test", Description: "test"}
 
-	return n
+	return &n, nil
 }
 
-func (db MockDb) GetByCode(code string) Note {
+func (db MockDb) GetByCode(code string) (*Note, error) {
 	n := Note{Title: "test", Description: "test"}
 
-	return n
+	return &n, nil
 }
 
 func TestHomeHandle(t *testing.T) {

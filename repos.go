@@ -15,9 +15,9 @@ type MongoManager struct {
 
 // DbManager ...
 type DbManager interface {
-	GetAll() []Note
-	Create(note Note) Note
-	GetByCode(code string) Note
+	GetAll() ([]Note, error)
+	Create(note *Note) (*Note, error)
+	GetByCode(code string) (*Note, error)
 }
 
 // NewMongoManager ...
@@ -33,38 +33,34 @@ func NewMongoManager(dbPath string) *MongoManager {
 }
 
 // GetAll ...
-func (db *MongoManager) GetAll() []Note {
+func (db *MongoManager) GetAll() ([]Note, error) {
 	var notes []Note
 	session := db.session.Clone()
 	defer session.Close()
 	collection := session.DB("notesdb").C("notes")
-	iter := collection.Find(nil).Iter()
-
-	result := Note{}
-	for iter.Next(&result) {
-		notes = append(notes, result)
+	err := collection.Find(nil).All(&notes)
+	if err != nil {
+		return nil, err
 	}
-
-	return notes
+	return notes, nil
 }
 
 // GetByCode ...
-func (db *MongoManager) GetByCode(code string) Note {
+func (db *MongoManager) GetByCode(code string) (*Note, error) {
 	var note Note
 	session := db.session.Clone()
 	defer session.Close()
 	collection := session.DB("notesdb").C("notes")
 	err := collection.Find(bson.M{"note_code": code}).One(&note)
-
 	if err != nil {
-		log.Printf("Note %s not found !!", code)
+		return nil, err
 	}
 
-	return note
+	return &note, nil
 }
 
 // Create ...
-func (db *MongoManager) Create(note Note) Note {
+func (db *MongoManager) Create(note *Note) (*Note, error) {
 	session := db.session.Clone()
 	defer session.Close()
 	collection := session.DB("notesdb").C("notes")
@@ -73,12 +69,12 @@ func (db *MongoManager) Create(note Note) Note {
 	note.ID = objID
 	note.CreatedOn = time.Now()
 
-	err := collection.Insert(&note)
+	err := collection.Insert(note)
 	if err != nil {
-		panic(err)
-	} else {
-		log.Printf("Inserted new Note %s with name %s", note.ID, note.Title)
+		return nil, err
 	}
 
-	return note
+	log.Printf("Inserted new Note %s with name %s", note.ID, note.Title)
+
+	return note, err
 }

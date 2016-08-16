@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"gopkg.in/mgo.v2"
 )
 
 // JSONHandle ...
@@ -24,7 +26,14 @@ func HomeHandle(res http.ResponseWriter, req *http.Request) {
 // NotesHandle ...
 func NotesHandle(db DbManager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		json.NewEncoder(res).Encode(NotesResource{Notes: db.GetAll()})
+		notes, err := db.GetAll()
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, `{"error_code":%d, "error_msg":"%s"}`, http.StatusInternalServerError, err)
+			return
+		}
+
+		json.NewEncoder(res).Encode(NotesResource{Notes: notes})
 	}
 }
 
@@ -35,7 +44,18 @@ func NoteByCodeHandle(db DbManager) http.HandlerFunc {
 		code := vars["code"]
 		log.Printf("Note Code: %s", code)
 
-		json.NewEncoder(res).Encode(NoteResource{Note: db.GetByCode(code)})
+		note, err := db.GetByCode(code)
+		if err == mgo.ErrNotFound {
+			res.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(res, `{"error_code":%d, "error_msg":"%s"}`, http.StatusNotFound, err)
+			return
+		} else if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, `{"error_code":%d, "error_msg":"%s"}`, http.StatusInternalServerError, err)
+			return
+		}
+
+		json.NewEncoder(res).Encode(NoteResource{Note: *note})
 	}
 }
 
@@ -45,9 +65,19 @@ func CreateNoteHandle(db DbManager) http.HandlerFunc {
 		var noteResource NoteResource
 		err := json.NewDecoder(req.Body).Decode(&noteResource)
 		if err != nil {
-			panic(err)
+			res.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(res, `{"error_code":%d, "error_msg":"%s"}`, http.StatusBadRequest, err)
+			return
 		}
-		json.NewEncoder(res).Encode(NoteResource{Note: db.Create(noteResource.Note)})
+
+		note, err := db.Create(&noteResource.Note)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, `{"error_code":%d, "error_msg":"%s"}`, http.StatusInternalServerError, err)
+			return
+		}
+
+		json.NewEncoder(res).Encode(NoteResource{Note: *note})
 	}
 }
 
