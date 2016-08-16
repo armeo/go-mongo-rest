@@ -28,6 +28,17 @@ func NotesHandle(db DbManager) http.HandlerFunc {
 	}
 }
 
+// NoteByCodeHandle ...
+func NoteByCodeHandle(db DbManager) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		vars := mux.Vars(req)
+		code := vars["code"]
+		log.Printf("Note Code: %s", code)
+
+		json.NewEncoder(res).Encode(NoteResource{Note: db.GetByCode(code)})
+	}
+}
+
 // CreateNoteHandle ...
 func CreateNoteHandle(db DbManager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
@@ -45,6 +56,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", JSONHandle(HomeHandle)).Methods("GET")
 	r.Handle("/api/v1/notes", JSONHandle(NotesHandle(db))).Methods("GET")
+	r.Handle("/api/v1/notes/{code}", JSONHandle(NoteByCodeHandle(db))).Methods("GET")
 	r.Handle("/api/v1/notes", JSONHandle(CreateNoteHandle(db))).Methods("POST")
 	http.Handle("/", r)
 

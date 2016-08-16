@@ -17,6 +17,7 @@ type MongoManager struct {
 type DbManager interface {
 	GetAll() []Note
 	Create(note Note) Note
+	GetByCode(code string) Note
 }
 
 // NewMongoManager ...
@@ -45,6 +46,21 @@ func (db *MongoManager) GetAll() []Note {
 	}
 
 	return notes
+}
+
+// GetByCode ...
+func (db *MongoManager) GetByCode(code string) Note {
+	var note Note
+	session := db.session.Clone()
+	defer session.Close()
+	collection := session.DB("notesdb").C("notes")
+	err := collection.Find(bson.M{"note_code": code}).One(&note)
+
+	if err != nil {
+		log.Printf("Note %s not found !!", code)
+	}
+
+	return note
 }
 
 // Create ...

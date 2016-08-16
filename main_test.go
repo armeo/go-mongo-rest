@@ -22,6 +22,12 @@ func (db MockDb) Create(note Note) Note {
 	return n
 }
 
+func (db MockDb) GetByCode(code string) Note {
+	n := Note{Title: "test", Description: "test"}
+
+	return n
+}
+
 func TestHomeHandle(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	res := httptest.NewRecorder()
@@ -67,4 +73,18 @@ func TestCreateNoteHandle(t *testing.T) {
 
 	assert.Equal(t, expected.Note.Title, actual.Note.Title)
 	assert.Equal(t, expected.Note.Description, actual.Note.Description)
+}
+
+func TestNoteByCodeHandle(t *testing.T) {
+	mockDb := MockDb{}
+	noteByCodeHandle := NoteByCodeHandle(mockDb)
+	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
+	res := httptest.NewRecorder()
+	noteByCodeHandle.ServeHTTP(res, req)
+
+	var expected NotesResource
+	var actual NotesResource
+	json.NewDecoder(res.Body).Decode(&actual)
+
+	assert.Equal(t, expected, actual)
 }
