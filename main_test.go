@@ -35,10 +35,12 @@ func (db *MockDb) GetByCode(code string) (*Note, error) {
 }
 
 func TestHomeHandle(t *testing.T) {
+	mockDb := MockDb{}
+	mux := Route(&mockDb)
+
 	req, _ := http.NewRequest("GET", "/", nil)
 	res := httptest.NewRecorder()
-
-	HomeHandle(res, req)
+	mux.ServeHTTP(res, req)
 
 	assert.Equal(t, 200, res.Code)
 
@@ -51,10 +53,10 @@ func TestHomeHandle(t *testing.T) {
 
 func TestNotesHandle(t *testing.T) {
 	mockDb := MockDb{}
-	notesHandle := NotesHandle(&mockDb)
+	mux := Route(&mockDb)
 	req, _ := http.NewRequest("GET", "/api/v1/notes", nil)
 	res := httptest.NewRecorder()
-	notesHandle.ServeHTTP(res, req)
+	mux.ServeHTTP(res, req)
 
 	var expected NotesResource
 	var actual NotesResource
@@ -65,11 +67,11 @@ func TestNotesHandle(t *testing.T) {
 
 func TestCreateNoteHandle(t *testing.T) {
 	mockDb := MockDb{}
-	createNoteHandle := CreateNoteHandle(&mockDb)
+	mux := Route(&mockDb)
 	var jsonStr = []byte(`{"note":{"title":"test", "description":"test"}}`)
 	req, _ := http.NewRequest("POST", "/api/v1/notes", bytes.NewBuffer(jsonStr))
 	res := httptest.NewRecorder()
-	createNoteHandle.ServeHTTP(res, req)
+	mux.ServeHTTP(res, req)
 
 	n := Note{Title: "test", Description: "test"}
 	expected := NoteResource{Note: n}
