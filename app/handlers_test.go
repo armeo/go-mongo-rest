@@ -1,4 +1,4 @@
-package main
+package app_test
 
 import (
 	"bytes"
@@ -11,32 +11,33 @@ import (
 
 	mgo "gopkg.in/mgo.v2"
 
+	"github.com/armeo/go-mongo-rest/app"
 	"github.com/stretchr/testify/assert"
 )
 
 type MockDb struct {
 	err   error
-	note  *Note
-	notes []Note
+	note  *app.Note
+	notes []app.Note
 }
 
-func (db *MockDb) GetAll() ([]Note, error) {
+func (db *MockDb) GetAll() ([]app.Note, error) {
 	return db.notes, db.err
 }
 
-func (db *MockDb) Create(note *Note) (*Note, error) {
-	db.note = &Note{Title: "test", Description: "test"}
+func (db *MockDb) Create(note *app.Note) (*app.Note, error) {
+	db.note = &app.Note{Title: "test", Description: "test"}
 
 	return db.note, db.err
 }
 
-func (db *MockDb) GetByCode(code string) (*Note, error) {
+func (db *MockDb) GetByCode(code string) (*app.Note, error) {
 	return db.note, db.err
 }
 
 func TestHomeHandle(t *testing.T) {
 	mockDb := MockDb{}
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 
 	req, _ := http.NewRequest("GET", "/", nil)
 	res := httptest.NewRecorder()
@@ -53,13 +54,13 @@ func TestHomeHandle(t *testing.T) {
 
 func TestNotesHandle(t *testing.T) {
 	mockDb := MockDb{}
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 	req, _ := http.NewRequest("GET", "/api/v1/notes", nil)
 	res := httptest.NewRecorder()
 	mux.ServeHTTP(res, req)
 
-	var expected NotesResource
-	var actual NotesResource
+	var expected app.NotesResource
+	var actual app.NotesResource
 	json.NewDecoder(res.Body).Decode(&actual)
 
 	assert.Equal(t, expected, actual)
@@ -67,16 +68,16 @@ func TestNotesHandle(t *testing.T) {
 
 func TestCreateNoteHandle(t *testing.T) {
 	mockDb := MockDb{}
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 	var jsonStr = []byte(`{"note":{"title":"test", "description":"test"}}`)
 	req, _ := http.NewRequest("POST", "/api/v1/notes", bytes.NewBuffer(jsonStr))
 	res := httptest.NewRecorder()
 	mux.ServeHTTP(res, req)
 
-	n := Note{Title: "test", Description: "test"}
-	expected := NoteResource{Note: n}
+	n := app.Note{Title: "test", Description: "test"}
+	expected := app.NoteResource{Note: n}
 
-	var actual NoteResource
+	var actual app.NoteResource
 	json.NewDecoder(res.Body).Decode(&actual)
 
 	assert.Equal(t, expected.Note.Title, actual.Note.Title)
@@ -86,17 +87,17 @@ func TestCreateNoteHandle(t *testing.T) {
 func TestNoteByCodeHandle(t *testing.T) {
 	now := time.Now()
 	mockDb := MockDb{
-		note: &Note{Title: "test", Description: "test", CreatedOn: now},
+		note: &app.Note{Title: "test", Description: "test", CreatedOn: now},
 	}
 
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 
 	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
 	res := httptest.NewRecorder()
 	mux.ServeHTTP(res, req)
 
-	expected := NoteResource{Note: Note{Title: "test", Description: "test", CreatedOn: now}}
-	var actual NoteResource
+	expected := app.NoteResource{Note: app.Note{Title: "test", Description: "test", CreatedOn: now}}
+	var actual app.NoteResource
 	json.NewDecoder(res.Body).Decode(&actual)
 	assert.Equal(t, expected, actual)
 }
@@ -106,7 +107,7 @@ func TestNoteByCodeHandleNotFound(t *testing.T) {
 		err: mgo.ErrNotFound,
 	}
 
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 
 	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
 	res := httptest.NewRecorder()
@@ -124,7 +125,7 @@ func TestNoteByCodeHandleInternalServerError(t *testing.T) {
 		err: fmt.Errorf("Internal Server Error"),
 	}
 
-	mux := Route(&mockDb)
+	mux := app.NewRoute(&mockDb)
 
 	req, _ := http.NewRequest("GET", "/api/v1/notes/test1", nil)
 	res := httptest.NewRecorder()
