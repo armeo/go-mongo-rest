@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// === Setup ====
 type MockDb struct {
 	err   error
 	note  *app.Note
@@ -46,6 +47,7 @@ func mockRoute(mockDb MockDb, method string, endpoint string, body io.Reader) *h
 	return res
 }
 
+// === Test Case ====
 func TestHomeHandle(t *testing.T) {
 	res := mockRoute(MockDb{}, "GET", "/", nil)
 
